@@ -34,9 +34,10 @@ def sidebar_settings():
         # with st.expander("Settings"):
         model_name = st.selectbox("Model", ["gpt2-small", "gpt2-medium", "gpt2-large", "gpt2-xl", "gpt-neo-2.7B",
                                             "Llama-2-7b-chat"], index=0)
-        st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature")
+        st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
+                        help="Temperature scaling for sampling")
         st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
-                        key="max_tokens")
+                        key="max_tokens", help="Maximum number of tokens to generate")
         # stop_word = st.text_input("Stop Word", value="")
         # initial_prompt = st.text_area("Initial Prompt", value="")
 
@@ -56,18 +57,18 @@ def main_window():
 
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        st.selectbox("Layer index", list(range(st.session_state.model.cfg.n_layers)), index=0, key="layer_idx")
+        st.selectbox("Layer index", list(range(st.session_state.model.cfg.n_layers)), index=0, key="layer_idx", help="Index of the layer / transformer block",)
     with col2:
         st.selectbox("Activation type",
                      get_activation_types(st.session_state.model.hook_dict, st.session_state.layer_idx), index=0,
-                     key="act_type")
+                     key="act_type", help="Type of activation to ablate (like activation, attention, residual stream...)")
     with col3:
-        st.selectbox("Head index", list(range(st.session_state.model.cfg.n_heads)), index=0, key="head_idx",
+        st.selectbox("Head index", list(range(st.session_state.model.cfg.n_heads)), index=0, key="head_idx", help="Head index (if values, keys or queries are selected)",
                      disabled=not st.session_state.act_type in ["key", "query", "value"])
     with col4:
-        st.number_input("Position", value=-1, min_value=-1, max_value=1000, step=1, key="position")
+        st.number_input("Position", value=-1, min_value=-1, max_value=1000, step=1, key="position", help="Position in sequence (-1 means all positions)")
     with col5:
-        st.selectbox("Action", ["zero", "double"], index=0, key="ablation_type")
+        st.selectbox("Action", ["zero", "double"], index=0, key="ablation_type", help="Action to perform on selected activations")
 
     prompt = st.text_input("Input prompt")
 
