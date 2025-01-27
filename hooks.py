@@ -16,16 +16,12 @@ def take_action(activation: torch.Tensor, action: str):
 
 
 def get_ablation_hook(
-        hook_dict: dict,
         act_type: str,
         act_name: str,
-        layer_idx: int = None,
         head_idx: int = None,
         position_list: list = None,
         ablation_type: str = "zero"
-) -> tuple[str, Callable]:
-    act_alias = act_aliases[act_type][act_name]
-    hook_name: str = get_hook_name(hook_dict, act_alias, layer_idx)
+) -> Callable:
 
     def head_ablation_hook(
             value: Float[torch.Tensor, "batch pos head_index d_head"],
@@ -52,9 +48,9 @@ def get_ablation_hook(
         return value
 
     if act_type == "attention" and act_name != "attention output":
-        return hook_name, head_ablation_hook
+        return head_ablation_hook
     else:
-        return hook_name, ablation_hook
+        return ablation_hook
 
 
 layer_type_alias = [
@@ -122,7 +118,7 @@ def get_layer_indices(act_type: str, act_name: str, hook_dict: dict):
 
 def get_hook_name(hook_dict: dict, act_alias: str, layer_idx: int = None) -> str:
     if "blocks." in act_alias or "embed" in act_alias:
-        hook_name =  act_alias
+        hook_name = act_alias
     else:
         if layer_idx is None:
             raise ValueError("Layer index must be provided for block activations")

@@ -28,7 +28,15 @@ streamlit run app.py
 - ablate head, residual stream or MLP
 - only apply to a fixed position
 - zero out or doublle attentions
-- custom hooks (coming soon)
+- load and apply custom hooks
+
+## Custom hooks
+You can use your custom hooks. Just out your hooks in a new python file in folder `custom_hooks`. The hooks need to fulfill the following conditions:
+- the name of the hook has to start with `hook_`
+- the hook takes in a torch tensor and returns a torch tensor
+- make sure that the hook respects the dimension of the attention (layer) that it is supposed to act on
+
+```python
 
 ## License
 

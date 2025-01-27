@@ -1,3 +1,24 @@
+import os
+import importlib.util
+import inspect
+
+
+def load_custom_hooks(directory_path):
+    hook_dict = {}
+
+    for filename in os.listdir(directory_path):
+        if not filename.endswith(".py"):
+            continue
+
+        module_name = filename[:-3]
+        module_path = os.path.join(directory_path, filename)
+        spec = importlib.util.spec_from_file_location(module_name, module_path)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        functions = {name: obj for name, obj in inspect.getmembers(module, inspect.isfunction) if name.startswith("hook_")}
+        hook_dict.update(functions)
+
+    return hook_dict
 
 
 def get_position_list(position: str) -> list[int]:

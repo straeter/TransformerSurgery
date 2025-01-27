@@ -7,7 +7,7 @@ import transformer_lens
 from hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, get_hook_name
 from stream_generator import generate_with_hooks
 from styling import streamlit_style
-from utils import style_tokens, get_position_list
+from utils import style_tokens, get_position_list, load_custom_hooks
 
 st.set_page_config(layout="wide")
 st.markdown(streamlit_style,unsafe_allow_html=True)
@@ -104,8 +104,21 @@ def sidebar_settings():
 
 def main_window():
     st.title("TransformerSurgery")
-
     model = st.session_state.model
+
+    col_hooks, col_hook, _ = st.columns([1,1,3])
+    with col_hooks:
+        hook_type = st.selectbox(
+            "Hook type", ["ablation hook", "custom hook"],
+            key="hook_type", help="Choose hook type, custom hook loads hooks from folder custom_hooks")
+
+    if hook_type == "custom hook":
+        with col_hook:
+            custom_hooks = load_custom_hooks("custom_hooks")
+            custom_hook_key = st.selectbox("Custom hook", list(custom_hooks.keys()), key="custom_hook_key")
+            custom_hook = custom_hooks[custom_hook_key]
+    else:
+        custom_hook = None
 
     col0, col1, col2, col3, col4, col5 = st.columns(6)
     with col0:
@@ -123,21 +136,30 @@ def main_window():
             help="Index of the layer / transformer block",
             disabled=(act_type == "embedding")
         )
-    with col3:
-        head_idx = st.selectbox(
-            "Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx",
-            help="Head index (if values, keys or queries are selected)",
-            disabled=not (act_type == "attention"))
-    with col4:
-        position = st.text_input(
-            "Position(s)", value="all", key="position",
-            help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
-    with col5:
-        ablation_type = st.selectbox(
-            "Action", ["zero", "double", "flip"], index=0, key="ablation_type",
-            help="Action to perform on selected activations")
 
-    position_list = get_position_list(position)
+    act_alias = act_aliases[act_type][act_name]
+    hook_name: str = get_hook_name(model.hook_dict, act_alias, layer_idx)
+
+    if hook_type == "ablation hook":
+        with col3:
+            head_idx = st.selectbox(
+                "Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx",
+                help="Head index (if values, keys or queries are selected)",
+                disabled=not (act_type == "attention"))
+        with col4:
+            position = st.text_input(
+                "Position(s)", value="all", key="position",
+                help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
+            position_list = get_position_list(position)
+
+        with col5:
+            ablation_type = st.selectbox(
+                "Action", ["zero", "double", "flip"], index=0, key="ablation_type",
+                help="Action to perform on selected activations")
+    else:
+        head_idx = None
+        position_list = None
+        ablation_type = None
 
     prompt = st.text_input("Input prompt")
 
@@ -156,8 +178,7 @@ def main_window():
 
         if btn_generate.button("Generate normally"):
             with (st.spinner("Running model...")):
-                hooks = []
-                hooked_generator = generate_with_hooks(model, prompt, hooks, **st.session_state.model_param)
+                hooked_generator = generate_with_hooks(model, prompt, [], **st.session_state.model_param)
                 st.session_state.output = ""
                 for text in hooked_generator:
                     st.session_state.output = text
@@ -170,15 +191,17 @@ def main_window():
         hooked_output = st.empty()
         if btn_generate_hooked.button("Generate with hooks"):
             with (st.spinner("Running model with hooks...")):
-                hooks = [get_ablation_hook(
-                    hook_dict=model.hook_dict,
-                    act_type=act_type,
-                    act_name=act_name,
-                    layer_idx=layer_idx,
-                    head_idx=head_idx,
-                    position_list=position_list,
-                    ablation_type=ablation_type
-                )]
+                if hook_type == "custom hook":
+                    hooks = [(hook_name, custom_hook)]
+                else:
+                    hook = get_ablation_hook(
+                        act_type=act_type,
+                        act_name=act_name,
+                        head_idx=head_idx,
+                        position_list=position_list,
+                        ablation_type=ablation_type
+                    )
+                    hooks = [(hook_name, hook)]
                 hooked_generator = generate_with_hooks(model, prompt, hooks, **st.session_state.model_param)
                 st.session_state.output_hooked = ""
                 for text in hooked_generator:
