@@ -4,11 +4,13 @@ import streamlit as st
 import torch
 import transformer_lens
 
-from hooks import get_ablation_hook, get_activation_types
+from hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, get_hook_name
 from stream_generator import generate_with_hooks
+from styling import streamlit_style
 from utils import style_tokens, get_position_list
 
 st.set_page_config(layout="wide")
+st.markdown(streamlit_style,unsafe_allow_html=True)
 
 
 def init_model(model_name, torch_dtype=torch.bfloat16):
@@ -100,30 +102,40 @@ def sidebar_settings():
         })
 
 
-# Main chat functionality
 def main_window():
     st.title("TransformerSurgery")
 
     model = st.session_state.model
 
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        layer_idx = st.selectbox("Layer index", list(range(model.cfg.n_layers)), index=0, key="layer_idx",
-                                 help="Index of the layer / transformer block", )
-    with col2:
+    col0, col1, col2, col3, col4, col5 = st.columns(6)
+    with col0:
         act_type = st.selectbox(
-            "Activation type", get_activation_types(model.hook_dict, st.session_state.layer_idx), index=0,
+            "Activation type", list(act_aliases.keys()), index=0,
             key="act_type", help="Type of activation to ablate (like activation, attention, residual stream...)")
+    with col1:
+        aliases = get_activation_aliases(act_type, model.hook_dict)
+        act_name = st.selectbox(
+            "Activation name", aliases,
+            key="act_alias", help="Name of activation")
+    with col2:
+        layer_idx = st.selectbox(
+            "Layer index", get_layer_indices(act_type, act_name, model.hook_dict), index=0, key="layer_idx",
+            help="Index of the layer / transformer block",
+            disabled=(act_type == "embedding")
+        )
     with col3:
-        head_idx = st.selectbox("Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx",
-                                help="Head index (if values, keys or queries are selected)",
-                                disabled=not st.session_state.act_type in ["key", "query", "value"])
+        head_idx = st.selectbox(
+            "Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx",
+            help="Head index (if values, keys or queries are selected)",
+            disabled=not (act_type == "attention"))
     with col4:
-        position = st.text_input("Position(s)", value="all", key="position",
-                                 help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
+        position = st.text_input(
+            "Position(s)", value="all", key="position",
+            help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
     with col5:
-        ablation_type = st.selectbox("Action", ["zero", "double", "flip"], index=0, key="ablation_type",
-                                     help="Action to perform on selected activations")
+        ablation_type = st.selectbox(
+            "Action", ["zero", "double", "flip"], index=0, key="ablation_type",
+            help="Action to perform on selected activations")
 
     position_list = get_position_list(position)
 
@@ -159,7 +171,9 @@ def main_window():
         if btn_generate_hooked.button("Generate with hooks"):
             with (st.spinner("Running model with hooks...")):
                 hooks = [get_ablation_hook(
+                    hook_dict=model.hook_dict,
                     act_type=act_type,
+                    act_name=act_name,
                     layer_idx=layer_idx,
                     head_idx=head_idx,
                     position_list=position_list,
