@@ -35,10 +35,14 @@ def sidebar_settings():
         # with st.expander("Settings"):
         model_name = st.selectbox("Model", ["gpt2-small", "gpt2-medium", "gpt2-large", "gpt2-xl", "gpt-neo-2.7B",
                                             "Llama-2-7b-chat"], index=0)
-        st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
-                        help="Temperature scaling for sampling")
-        st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
-                        key="max_tokens", help="Maximum number of tokens to generate")
+
+        col_t, col_m = st.columns(2)
+        with col_t:
+            st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
+                            help="Temperature scaling for sampling")
+        with col_m:
+            st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
+                            key="max_tokens", help="Maximum number of tokens to generate")
         # stop_word = st.text_input("Stop Word", value="")
         # initial_prompt = st.text_area("Initial Prompt", value="")
 
@@ -50,6 +54,20 @@ def sidebar_settings():
             gc.collect()
             torch.cuda.empty_cache()
             init_model(model_name)
+
+        st.subheader(f"Model information: {st.session_state.model_name}")
+
+        st.table({
+            "Layers": st.session_state.model.cfg.n_layers,
+            "Model dimension": st.session_state.model.cfg.d_model,
+            "Attention heads": st.session_state.model.cfg.n_heads,
+            "Head dimension": st.session_state.model.cfg.d_head,
+            "Vocab size": st.session_state.model.cfg.d_vocab,
+            "Context size": st.session_state.model.cfg.n_ctx,
+            "Tokenizer": st.session_state.model.cfg.tokenizer_name
+        })
+
+
 
 
 # Main chat functionality
