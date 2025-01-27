@@ -29,37 +29,20 @@ def init_session(model_name="gpt2-small"):
         st.session_state.output_hooked = ""
 
 
+default_parameters = {
+    "temperature": 0.0,
+    "max_tokens": 100,
+    "top_k": None,
+    "top_p": None
+}
+
+
 def sidebar_settings():
     with st.sidebar:
         st.title("Settings")
         # with st.expander("Settings"):
         model_name = st.selectbox("Model", ["gpt2-small", "gpt2-medium", "gpt2-large", "gpt2-xl", "gpt-neo-2.7B",
                                             "Llama-2-7b-chat"], index=0)
-
-        col_t, col_m = st.columns(2)
-        with col_t:
-            temperature = st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
-                            help="Temperature scaling for sampling")
-        with col_m:
-            max_token = st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
-                            key="max_tokens", help="Maximum number of tokens to generate")
-
-        col_k, col_p = st.columns(2)
-        with col_k:
-            top_k = st.number_input("Top K", value=None, min_value=1, step=1, key="top_k", help="Top K sampling")
-        with col_p:
-            top_p = st.number_input("Top P", value=None, min_value=0.0, max_value=1.0, step=0.05, key="top_p",
-                            help="Top P sampling")
-
-        st.session_state.model_param = {
-            "temperature": temperature,
-            "max_tokens": max_token,
-            "top_k": top_k,
-            "top_p": top_p
-        }
-
-        # stop_word = st.text_input("Stop Word", value="")
-        # initial_prompt = st.text_area("Initial Prompt", value="")
 
         if model_name != st.session_state.model_name:
             print("Reloading model...")
@@ -69,6 +52,40 @@ def sidebar_settings():
             gc.collect()
             torch.cuda.empty_cache()
             init_model(model_name)
+
+        if st.button("Reset parameters"):
+            st.session_state.temperature = default_parameters["temperature"]
+            st.session_state.max_tokens = default_parameters["max_tokens"]
+            st.session_state.top_k = default_parameters["top_k"]
+            st.session_state.top_p = default_parameters["top_p"]
+
+        col_t, col_m = st.columns(2)
+        with col_t:
+            st.number_input("Temperature", value=default_parameters["temperature"], min_value=0.0, max_value=2.0,
+                            step=0.1, key="temperature",
+                            help="Temperature scaling for sampling")
+        with col_m:
+            st.number_input("Max Tokens", value=default_parameters["max_tokens"], min_value=0, step=1,
+                            max_value=st.session_state.model.cfg.n_ctx,
+                            key="max_tokens", help="Maximum number of tokens to generate")
+
+        col_k, col_p = st.columns(2)
+        with col_k:
+            st.number_input("Top K", value=default_parameters["top_k"], min_value=1, step=1, key="top_k",
+                            help="Top K sampling")
+        with col_p:
+            st.number_input("Top P", value=default_parameters["top_p"], min_value=0.0, max_value=1.0, step=0.05,
+                            key="top_p",
+                            help="Top P sampling")
+
+        # stop_word = st.text_input("Stop Word"
+
+        st.session_state.model_param = {
+            "temperature": st.session_state.temperature,
+            "max_tokens": st.session_state.max_tokens,
+            "top_k": st.session_state.top_k,
+            "top_p": st.session_state.top_p
+        }
 
         st.subheader(f"Model information: {st.session_state.model_name}")
 
@@ -83,8 +100,6 @@ def sidebar_settings():
         })
 
 
-
-
 # Main chat functionality
 def main_window():
     st.title("TransformerSurgery")
@@ -93,18 +108,22 @@ def main_window():
 
     col1, col2, col3, col4, col5 = st.columns(5)
     with col1:
-        layer_idx = st.selectbox("Layer index", list(range(model.cfg.n_layers)), index=0, key="layer_idx", help="Index of the layer / transformer block",)
+        layer_idx = st.selectbox("Layer index", list(range(model.cfg.n_layers)), index=0, key="layer_idx",
+                                 help="Index of the layer / transformer block", )
     with col2:
         act_type = st.selectbox(
             "Activation type", get_activation_types(model.hook_dict, st.session_state.layer_idx), index=0,
             key="act_type", help="Type of activation to ablate (like activation, attention, residual stream...)")
     with col3:
-        head_idx = st.selectbox("Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx", help="Head index (if values, keys or queries are selected)",
-                     disabled=not st.session_state.act_type in ["key", "query", "value"])
+        head_idx = st.selectbox("Head index", list(range(model.cfg.n_heads)), index=0, key="head_idx",
+                                help="Head index (if values, keys or queries are selected)",
+                                disabled=not st.session_state.act_type in ["key", "query", "value"])
     with col4:
-        position = st.text_input("Position(s)", value="all", key="position", help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
+        position = st.text_input("Position(s)", value="all", key="position",
+                                 help="Affected position(s) in sequence, comma separated list or something like 2,4-7 etc.")
     with col5:
-        ablation_type = st.selectbox("Action", ["zero", "double", "flip"], index=0, key="ablation_type", help="Action to perform on selected activations")
+        ablation_type = st.selectbox("Action", ["zero", "double", "flip"], index=0, key="ablation_type",
+                                     help="Action to perform on selected activations")
 
     position_list = get_position_list(position)
 
