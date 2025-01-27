@@ -3,7 +3,24 @@ from copy import deepcopy
 import torch
 
 
-def generate_with_hooks(model, prompt: str,hooks: list, max_tokens: int, temperature: float = 0.0):
+def apply_top_k(probabilities: torch.Tensor, top_k: int):
+    sorted_prob, sorted_indices = torch.sort(probabilities, descending=True)
+    probabilities[probabilities < sorted_prob[0, top_k]] = 0
+    probabilities = probabilities / torch.sum(probabilities, dim=-1, keepdim=True)
+    return probabilities
+
+
+def apply_top_p(probabilities: torch.Tensor, top_p: float):
+    sorted_prob, sorted_indices = torch.sort(probabilities, descending=True)
+    cumulative_probabilities = torch.cumsum(sorted_prob, dim=-1)
+    keep_tokens = cumulative_probabilities < top_p
+    probabilities[keep_tokens] = 0
+    probabilities = probabilities / torch.sum(probabilities, dim=-1, keepdim=True)
+    return probabilities
+
+
+def generate_with_hooks(model, prompt: str, hooks: list, max_tokens: int, temperature: float = 0.0, top_k: int = None,
+                        top_p: float = None):
     # Tokenize the prompt
     tokens = model.to_tokens(prompt)
     generated_tokens = tokens.clone()
@@ -26,6 +43,12 @@ def generate_with_hooks(model, prompt: str,hooks: list, max_tokens: int, tempera
             # Apply temperature scaling
             next_token_logits = next_token_logits / temperature
             probabilities = torch.softmax(next_token_logits, dim=-1)
+
+            if top_k:
+                probabilities = apply_top_k(probabilities, top_k)
+
+            if top_p:
+                probabilities = apply_top_p(probabilities, top_p)
 
             # Sample from the probability distribution
             next_token = torch.multinomial(probabilities, num_samples=1)

@@ -38,11 +38,26 @@ def sidebar_settings():
 
         col_t, col_m = st.columns(2)
         with col_t:
-            st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
+            temperature = st.number_input("Temperature", value=0.0, min_value=0.0, max_value=2.0, step=0.1, key="temperature",
                             help="Temperature scaling for sampling")
         with col_m:
-            st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
+            max_token = st.number_input("Max Tokens", value=100, min_value=0, step=1, max_value=st.session_state.model.cfg.n_ctx,
                             key="max_tokens", help="Maximum number of tokens to generate")
+
+        col_k, col_p = st.columns(2)
+        with col_k:
+            top_k = st.number_input("Top K", value=None, min_value=1, step=1, key="top_k", help="Top K sampling")
+        with col_p:
+            top_p = st.number_input("Top P", value=None, min_value=0.0, max_value=1.0, step=0.05, key="top_p",
+                            help="Top P sampling")
+
+        st.session_state.model_param = {
+            "temperature": temperature,
+            "max_tokens": max_token,
+            "top_k": top_k,
+            "top_p": top_p
+        }
+
         # stop_word = st.text_input("Stop Word", value="")
         # initial_prompt = st.text_area("Initial Prompt", value="")
 
@@ -111,8 +126,7 @@ def main_window():
         if btn_generate.button("Generate normally"):
             with (st.spinner("Running model...")):
                 hooks = []
-                hooked_generator = generate_with_hooks(model, prompt, hooks, st.session_state.max_tokens,
-                                                       st.session_state.temperature)
+                hooked_generator = generate_with_hooks(model, prompt, hooks, **st.session_state.model_param)
                 st.session_state.output = ""
                 for text in hooked_generator:
                     st.session_state.output = text
@@ -132,8 +146,7 @@ def main_window():
                     position_list=position_list,
                     ablation_type=ablation_type
                 )]
-                hooked_generator = generate_with_hooks(model, prompt, hooks, st.session_state.max_tokens,
-                                                       st.session_state.temperature)
+                hooked_generator = generate_with_hooks(model, prompt, hooks, **st.session_state.model_param)
                 st.session_state.output_hooked = ""
                 for text in hooked_generator:
                     st.session_state.output_hooked = text
