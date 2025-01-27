@@ -27,7 +27,7 @@ streamlit run app.py
 - ablate attentions in any layer
 - ablate head, residual stream or MLP
 - only apply to a fixed position
-- zero out or doublle attentions
+- zero, double or flip attentions
 - load and apply custom hooks
 
 ## Custom hooks

@@ -104,6 +104,13 @@ def sidebar_settings():
 
 def main_window():
     st.title("TransformerSurgery")
+    with st.expander("Help"):
+        st.write("TransformerSurgery allows you to interact with a transformer model by ablation of activations using TransformerLens."
+                 "You can select the model and generation parameters in the sidebaar, choose the activation type and layer, the affected position and/or attention head, and then ablate (zero, double, or flip) the activations in the model."
+                 "Then you can generate text from an input prompt with and without the ablation hooks to see the effect of the ablation on the model output."
+                 "Beneath the prompt you can see the tokenized prompt with the affected positions highlighted (for custom hooks all positions are highlihgted by default)."
+                 "Alternatively, you can also load custom hooks from the custom_hooks folder to apply custom ablation functions to the model activations.")
+
     model = st.session_state.model
 
     col_hooks, col_hook, _ = st.columns([1,1,3])
