@@ -4,10 +4,10 @@ import streamlit as st
 import torch
 import transformer_lens
 
-from hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, get_hook_name
-from stream_generator import generate_with_hooks
-from styling import streamlit_style
-from utils import style_tokens, get_position_list, load_custom_hooks
+from transformer_surgery.hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, get_hook_name
+from transformer_surgery.stream_generator import generate_with_hooks
+from transformer_surgery.styling import streamlit_style
+from transformer_surgery.utils import style_tokens, get_position_list, load_custom_hooks
 
 st.set_page_config(layout="wide")
 st.markdown(streamlit_style,unsafe_allow_html=True)
