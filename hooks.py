@@ -92,10 +92,12 @@ act_aliases = {
         "positional embed": "hook_pos_embed",
     },
     "layer norm": {
-        "ln1_scale": "ln1.hook_scale",
-        "ln1_normalized": "ln1.hook_normalized",
-        "ln2_scale": "ln2.hook_scale",
-        "ln2_normalized": "ln2.hook_normalized",
+        "ln1 scale": "ln1.hook_scale",
+        "ln1 normalized": "ln1.hook_normalized",
+        "ln2 scale": "ln2.hook_scale",
+        "ln2 normalized": "ln2.hook_normalized",
+        "ln final scale": "ln_final.hook_scale",
+        "ln final normalized": "ln_final.hook_normalized",
     }
 
 }
@@ -117,7 +119,7 @@ def get_layer_indices(act_type: str, act_name: str, hook_dict: dict):
 
 
 def get_hook_name(hook_dict: dict, act_alias: str, layer_idx: int = None) -> str:
-    if "blocks." in act_alias or "embed" in act_alias:
+    if "blocks." in act_alias or "embed" in act_alias or "ln_final" in act_alias:
         hook_name = act_alias
     else:
         if layer_idx is None:

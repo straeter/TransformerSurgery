@@ -141,7 +141,7 @@ def main_window():
         layer_idx = st.selectbox(
             "Layer index", get_layer_indices(act_type, act_name, model.hook_dict), index=0, key="layer_idx",
             help="Index of the layer / transformer block",
-            disabled=(act_type == "embedding")
+            disabled=(act_type == "embedding" or act_name.startswith("ln final"))
         )
 
     act_alias = act_aliases[act_type][act_name]
