@@ -4,13 +4,14 @@ import streamlit as st
 import torch
 import transformer_lens
 
-from transformer_surgery.hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, get_hook_name
+from transformer_surgery.hooks import get_ablation_hook, get_activation_aliases, get_layer_indices, act_aliases, \
+    get_hook_name
 from transformer_surgery.stream_generator import generate_with_hooks
 from transformer_surgery.styling import streamlit_style
-from transformer_surgery.utils import style_tokens, get_position_list, load_custom_hooks
+from transformer_surgery.utils import style_tokens, get_position_list, load_custom_hooks, format_output_token
 
 st.set_page_config(layout="wide")
-st.markdown(streamlit_style,unsafe_allow_html=True)
+st.markdown(streamlit_style, unsafe_allow_html=True)
 
 
 def init_model(model_name, torch_dtype=torch.bfloat16):
@@ -27,8 +28,10 @@ def init_session(model_name="gpt2-small"):
     if not "model_name" in st.session_state:
         st.session_state.model_name = model_name
         init_model(model_name)
-        st.session_state.output = ""
-        st.session_state.output_hooked = ""
+        st.session_state.output = []
+        st.session_state.probs = []
+        st.session_state.output_hooked = []
+        st.session_state.probs_hooked = []
 
 
 default_parameters = {
@@ -105,15 +108,16 @@ def sidebar_settings():
 def main_window():
     st.title("TransformerSurgery")
     with st.expander("Help"):
-        st.write("TransformerSurgery allows you to interact with a transformer model by ablation of activations using TransformerLens."
-                 "You can select the model and generation parameters in the sidebaar, choose the activation type and layer, the affected position and/or attention head, and then ablate (zero, double, or flip) the activations in the model."
-                 "Then you can generate text from an input prompt with and without the ablation hooks to see the effect of the ablation on the model output."
-                 "Beneath the prompt you can see the tokenized prompt with the affected positions highlighted (for custom hooks all positions are highlihgted by default)."
-                 "Alternatively, you can also load custom hooks from the custom_hooks folder to apply custom ablation functions to the model activations.")
+        st.write(
+            "TransformerSurgery allows you to interact with a transformer model by ablation of activations using TransformerLens."
+            "You can select the model and generation parameters in the sidebaar, choose the activation type and layer, the affected position and/or attention head, and then ablate (zero, double, or flip) the activations in the model."
+            "Then you can generate text from an input prompt with and without the ablation hooks to see the effect of the ablation on the model output."
+            "Beneath the prompt you can see the tokenized prompt with the affected positions highlighted (for custom hooks all positions are highlihgted by default)."
+            "Alternatively, you can also load custom hooks from the custom_hooks folder to apply custom ablation functions to the model activations.")
 
     model = st.session_state.model
 
-    col_hooks, col_hook, _ = st.columns([1,1,3])
+    col_hooks, col_hook, _ = st.columns([1, 1, 3])
     with col_hooks:
         hook_type = st.selectbox(
             "Hook type", ["ablation hook", "custom hook"],
@@ -176,21 +180,30 @@ def main_window():
     st.text("Tokenized prompt:")
     st.markdown(styled_tokens, unsafe_allow_html=True)
 
+    token_replacements = {
+        model.tokenizer.bos_token: "§BOS§",
+        model.tokenizer.eos_token: "§EOS§",
+        model.tokenizer.pad_token: "§EOS§",
+        model.tokenizer.unk_token: "§UNKNOWN§",
+    }
+
     col_out_1, col_out_2 = st.columns(2)
 
     with col_out_1:
         btn_generate = st.empty()
         st.subheader("Normal Output")
         output = st.empty()
-
         if btn_generate.button("Generate normally"):
             with (st.spinner("Running model...")):
                 hooked_generator = generate_with_hooks(model, prompt, [], **st.session_state.model_param)
                 st.session_state.output = ""
-                for text in hooked_generator:
-                    st.session_state.output = text
-                    output.text(text)
-        output.text(st.session_state.output)
+                for (token_list, top_probabilities) in hooked_generator:
+                    st.session_state.output = token_list
+                    st.session_state.probs = top_probabilities
+                    output.write(format_output_token(token_list, top_probabilities, token_replacements),
+                                 unsafe_allow_html=True)
+        output.write(format_output_token(st.session_state.output, st.session_state.probs, token_replacements),
+                     unsafe_allow_html=True)
 
     with col_out_2:
         btn_generate_hooked = st.empty()
@@ -211,10 +224,14 @@ def main_window():
                     hooks = [(hook_name, hook)]
                 hooked_generator = generate_with_hooks(model, prompt, hooks, **st.session_state.model_param)
                 st.session_state.output_hooked = ""
-                for text in hooked_generator:
-                    st.session_state.output_hooked = text
-                    hooked_output.text(text)
-        hooked_output.text(st.session_state.output_hooked)
+                for (token_list, top_probabilities) in hooked_generator:
+                    st.session_state.output_hooked = token_list
+                    st.session_state.probs_hooked = top_probabilities
+                    hooked_output.write(format_output_token(token_list, top_probabilities, token_replacements),
+                                        unsafe_allow_html=True)
+
+        hooked_output.write(format_output_token(st.session_state.output_hooked, st.session_state.probs_hooked,
+                                                token_replacements), unsafe_allow_html=True)
 
 
 init_session()
