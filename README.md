@@ -4,6 +4,8 @@ A Library for perform and visualize brain surgery on transformers using mechanis
 
 With TransformerSurgery you can ablate attentions in a Transfomer model using TransformerLens hooks. You can then generate text and compare it with the unablated model.
 
+<img src="static/TransformerSurgery.png" alt="Alt text" width="500"/>
+
 ## Quick Start
 
 ### Install
