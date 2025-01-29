@@ -9,6 +9,7 @@ from transformer_surgery.hooks import get_ablation_hook, get_activation_aliases,
 from transformer_surgery.stream_generator import generate_with_hooks
 from transformer_surgery.styling import streamlit_style
 from transformer_surgery.utils import style_tokens, get_position_list, load_custom_hooks, format_output_token
+from transformer_lens.loading_from_pretrained import OFFICIAL_MODEL_NAMES
 
 st.set_page_config(layout="wide")
 st.markdown(streamlit_style, unsafe_allow_html=True)
@@ -46,8 +47,7 @@ def sidebar_settings():
     with st.sidebar:
         st.title("Settings")
         # with st.expander("Settings"):
-        model_name = st.selectbox("Model", ["gpt2-small", "gpt2-medium", "gpt2-large", "gpt2-xl", "gpt-neo-2.7B",
-                                            "Llama-2-7b-chat"], index=0)
+        model_name = st.selectbox("Model", OFFICIAL_MODEL_NAMES, index=0)
 
         if model_name != st.session_state.model_name:
             print("Reloading model...")
